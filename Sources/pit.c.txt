@@ -1,0 +1,32 @@
+
+#include "pit.h"
+
+/* Initializes the PIT module to produce an interrupt every second
+ * 
+ * */
+void InitPIT(void)
+{
+	// Enable PIT clock
+	SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
+	
+	// Turn on PIT
+	PIT_MCR = 0;
+	// Stop the pit when in debug mode
+	//PIT_MCR |= PIT_MCR_FRZ_MASK; 
+	
+	
+	// Configure PIT to produce an interrupt every 1s
+	PIT_LDVAL0 = 0x1312CFF;	// 1/20Mhz = 50ns   (1s/50ns)-1= 19,999,999 cycles or 0x1312CFF
+	PIT_TCTRL0 |= PIT_TCTRL_TIE_MASK | PIT_TCTRL_TEN_MASK; // Enable interrupt and enable timer
+	
+	//Enable interrupt registers ISER and ICPR
+	//enable_irq(INT_PIT - 16);
+	
+	//set_irq_priority(INT_PIT-16,0);  // Interrupt priority = 0 = max
+}
+
+/*	Handles PIT interrupt if enabled
+ * 
+ * 	Starts conversion in ADC0 with single ended channel 8 (PTB0) as input
+ * 
+ * */
