@@ -27,9 +27,10 @@ int main(void){
 	files_num = 0;
 	index_last = -1;
 	index_first = 0;
-	hd_file_Ptr[0] = &files;
-	file_name_Ptr[0] = &files_names;
+	//hd_file_Ptr[0] = &files;
+	file_name_Ptr[20] = &files_names;
 	state = IDLE_STATE_0;
+	rfile_mode = 0x01;
 	
 	while(1){
 	
@@ -177,41 +178,34 @@ int main(void){
 int print_files_menu(int file_idx){
 	int j;
 	char* temp_ptr;
+	char str_size[5];
 	int row = 0;
 	int i = file_idx; //index_last;
 	int print_num;
 	
 	lcd_clear();
+	for (j=10000; j>0; j--);	 	   // Delay
 	do{
 		temp_ptr = file_name_Ptr[i];
 		
 		//Print file name using it's pointer 
-		while (*temp_ptr)
-		{
-			lcd_data(*temp_ptr++);
-			for (j=10000; j>0; j--);	 	    // Delay
-		}
-	
+		lcd_puts(temp_ptr);
+		
 		//Space
 		lcd_cursor_right();					  
 				
 		//Print file's size 
-		for (j=10000; j>0; j--);	 	   // Delay
 		print_num = file_size[i];
-		while(print_num){
-			lcd_data('0' + print_num % 10);        //print char
-			print_num /= 10;
-		}
+		sprintf(str_size, "%d", print_num);
+		lcd_puts(str_size);
+		memset(str_size,0,5); 
 		
 		//Print 'B'
-		for (j=10000; j>0; j--);	 	      // Delay
 		lcd_data('B');
 		
-		for (j=10000; j>0; j--);	          // Delay
 		if ( row == 0 )
 		{
 			lcd_new_line();        	      //second line
-			for (j=10000; j>0; j--);	     // Delay
 		}
 		
 		i = (i-1)%20;
@@ -224,13 +218,16 @@ int print_files_menu(int file_idx){
 void receive_file(int index){
 		int i = 6;
 		int str_size = 0;		// count size of file
-		int next_lcl_index, cont_flag;
+		int prev_index, cont_flag;
 		char* file_name_addr;
+		char* end_of_mem;
 		
 		lcd_clear();
+			
+		file_name_addr = file_name_Ptr[20];
+		file_name_Ptr[index] = file_name_addr;
 		
 		cont_flag = 1;
-		file_name_addr = file_name_Ptr[index];
 		while (cont_flag){
 			*file_name_addr++ = PC_msg[i++];
 			if(i > 10)
@@ -238,6 +235,12 @@ void receive_file(int index){
 				if((PC_msg[i-4] == '.') & (PC_msg[i-3] == 't') & (PC_msg[i-2] == 'x') & (PC_msg[i-1] == 't'))
 					cont_flag = 0;
 			}
+			//if(files_num > 0 && file_name_addr == &files_names[299] + 1)
+			//{
+			//	file_name_addr = &files_names;
+			//	index_first = (index_first + 1)%20;
+			//	files_num -= 1;
+			//}
 		}
 		*file_name_addr++ = '\0';
 		
@@ -249,12 +252,35 @@ void receive_file(int index){
 		}
 		
 		file_size[index] = str_size;
-		next_lcl_index = (index + 1)%20;
-		hd_file_Ptr[next_lcl_index] = hd_file_Ptr[index] + file_size[index];
-		file_name_Ptr[next_lcl_index] = file_name_addr;
+		file_name_Ptr[20] = file_name_addr;
+		
+		if(!files_num)
+		{
+			end_of_mem = &files;
+		}
+		else
+		{
+			prev_index = (index - 1)%20;
+			end_of_mem = hd_file_Ptr[prev_index] + file_size[prev_index] + 2;
+		}
+		//if(end_of_mem + str_size > &files[11999])
+		//{
+		//	hd_file_Ptr[index] = &files;
+		//	while( files_num > 0 && (hd_file_Ptr[index] + str_size + 2 > hd_file_Ptr[index_first]))
+		//	{
+		//		index_first = (index_first + 1)%20;
+		//		files_num -= 1;
+		//	}
+		//}
+		//else
+		//{
+			hd_file_Ptr[index] = end_of_mem;
+		//}
 				
 		memset(PC_msg,0,40);                   //memset - clears the array
 		
+		*(hd_file_Ptr[index] + str_size) = '|';
+		*(hd_file_Ptr[index] + str_size + 1) = '\0';
 		
 		//receiving part:
 		DMA_DAR0 = (uint32_t)hd_file_Ptr[index];       				//destination
@@ -266,23 +292,27 @@ void receive_file(int index){
 }
 
 void print_file(int file_idx){
-	int j,i;
+	int j,i,size;
 	char* temp_ptr;
 	
 	lcd_clear();
+	for (j=10000; j>0; j--);	     // Delay
 	
 	temp_ptr = hd_file_Ptr[file_idx];
-	i = 0;
+	size = file_size[file_idx];
+	i = size;
 			
 	//Print file name using it's pointer 
-	while (*temp_ptr != EOF || i == 31)
+	while (i && i > (size - 32))
 	{
 		lcd_data(*temp_ptr++);
-		if(i == 15)
+		if(i == (size - 15))
 		{
 			lcd_new_line();        	      //second line
 		}
-		i++;
+		if(temp_ptr == &files[11999] + 1)
+			temp_ptr = &files;
+		i--;
 		for (j=10000; j>0; j--);	     // Delay
 	}
 	
@@ -292,7 +322,7 @@ void send_file(int file_idx){
 	int j,i;
 	
 	lcd_clear();
-	lcd_puts("sending...");
+	//lcd_puts("sending...");
 		
 	UARTprintf(UART0_BASE_PTR,hd_file_Ptr[file_idx]);
 	

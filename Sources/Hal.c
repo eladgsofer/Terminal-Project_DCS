@@ -9,7 +9,6 @@
 //-----------------------------------------------------------------
 void PORTD_IRQHandler(void){
 	volatile unsigned int i;
-	volatile unsigned int rfile_mode = 0x01;
 	
 	// check that the interrupt was for switch
 	if (PORTD_ISFR & SW7_POS) { //PTD7 - Choosing file
