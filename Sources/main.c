@@ -9,9 +9,9 @@
 		
 int print_files_menu(int file_index);
 void receive_file(int index);
+void send_file();
 
-
-int main(void){ 
+int main(void){
 	char_idx = 0;
 	dataready = 0;
 	ClockSetup();
@@ -27,8 +27,7 @@ int main(void){
 	files_num = 0;
 	index_last = -1;
 	index_first = 0;
-	//hd_file_Ptr[0] = &files;
-	file_name_Ptr[20] = &files_names;
+	last_addr = &files;
 	state = IDLE_STATE_0;
 	rfile_mode = 0x01;
 	
@@ -130,19 +129,28 @@ int main(void){
 			if (strncmp(PC_msg,"filer", 5) == 0){
 				state = FILE_TRANS_1;
 				
-				if(files_num == 20){
-					index_first += 1;
+				if((files_num == 20) && (index_first != index_last)){
+					index_first = (index_first + 1)%20;
+					files_num -= 1;
 				}
 				index_last = (index_last + 1)%20;
 				receive_file(index_last);   
 				files_num += 1;
+				
+				memset(PC_msg,0,40);                                   //memset - clears the array
 			}
 			//---------------------------------------------------------------------------------------------------------------------
-			// Files mode - AckFile*******************************************************************************
+			// Files mode - AckFile
 			//---------------------------------------------------------------------------------------------------------------------
 			if (strncmp(PC_msg,"ackfile",7) == 0){
-				DMA_DSR_BCR1 = DMA_DSR_BCR_BCR(file_size[index_last]+1);       // number of bytes yet to be transferred
-				DMA_SAR1 = (uint32_t)&files[index_last]; //***** Think about That*********** <--------------------
+				int j; 
+				
+				//Go back to menu
+				curr_index = index_last;
+				next_index = print_files_menu(curr_index);
+				
+				DMA_DSR_BCR1 = DMA_DSR_BCR_BCR(file_size[file_to_send_idx]+1);       // number of bytes yet to be transferred
+				DMA_SAR1 = (uint32_t)hd_file_Ptr[file_to_send_idx];
 				UART0_C5 |= UART0_C5_TDMAE_MASK;        				  // Enable DMA request for UART0 transmitter  
 				DMAMUX0_CHCFG1 |= DMAMUX_CHCFG_ENBL_MASK;				  // Enable DMA channel 
 				disable_irq(INT_UART0-16);  			                  // Disable UART0 interrupt 
@@ -208,11 +216,12 @@ int print_files_menu(int file_idx){
 			lcd_new_line();        	      //second line
 		}
 		
-		i = (i-1)%20;
+		i = (i == index_first) ? index_last : ((i - 1)%20);
+			
 		row += 1;
-	}while (( row < 2 ) && ( i != (index_first - 1)%20 ));	//Prints only 2 rows, or 1 in case it's the last file
+	}while ((files_num > 1) && ( row < 2 ));	//Prints only 2 rows, or 1 in case it's the last file
 	
-	return (file_idx - 1)%20;
+	return (file_idx == index_first) ? index_last : ((file_idx - 1)%20);
 }
 
 void receive_file(int index){
@@ -220,11 +229,29 @@ void receive_file(int index){
 		int str_size = 0;		// count size of file
 		int prev_index, cont_flag;
 		char* file_name_addr;
-		char* end_of_mem;
 		
 		lcd_clear();
-			
-		file_name_addr = file_name_Ptr[20];
+		
+		while (PC_msg[i] != ',')
+		{
+			str_size = str_size*10 + (PC_msg[i] - '0');
+			i++;
+		}
+		file_size[index] = str_size;
+		i++;
+		
+		if((last_addr + str_size + 30) > &(files[12999]))
+		{
+			last_addr = &files;
+			while( files_num > 0 && (last_addr + str_size + 30 > hd_file_Ptr[index_first]) && index_first != index_last)
+			{
+				index_first = (index_first + 1)%20;
+				files_num -= 1;
+			}
+		}
+		
+		
+		file_name_addr = last_addr;
 		file_name_Ptr[index] = file_name_addr;
 		
 		cont_flag = 1;
@@ -235,52 +262,16 @@ void receive_file(int index){
 				if((PC_msg[i-4] == '.') & (PC_msg[i-3] == 't') & (PC_msg[i-2] == 'x') & (PC_msg[i-1] == 't'))
 					cont_flag = 0;
 			}
-			//if(files_num > 0 && file_name_addr == &files_names[299] + 1)
-			//{
-			//	file_name_addr = &files_names;
-			//	index_first = (index_first + 1)%20;
-			//	files_num -= 1;
-			//}
 		}
 		*file_name_addr++ = '\0';
 		
-		i++;
+		//memset(PC_msg,0,40);                   //memset - clears the array
 		
-		while (PC_msg[i] != '\r'){
-			str_size = str_size*10 + (PC_msg[i] - '0');
-			i++;
-		}
+		hd_file_Ptr[index] = file_name_addr;
 		
-		file_size[index] = str_size;
-		file_name_Ptr[20] = file_name_addr;
+		*(hd_file_Ptr[index] + str_size) = '\0';
 		
-		if(!files_num)
-		{
-			end_of_mem = &files;
-		}
-		else
-		{
-			prev_index = (index - 1)%20;
-			end_of_mem = hd_file_Ptr[prev_index] + file_size[prev_index] + 2;
-		}
-		//if(end_of_mem + str_size > &files[11999])
-		//{
-		//	hd_file_Ptr[index] = &files;
-		//	while( files_num > 0 && (hd_file_Ptr[index] + str_size + 2 > hd_file_Ptr[index_first]))
-		//	{
-		//		index_first = (index_first + 1)%20;
-		//		files_num -= 1;
-		//	}
-		//}
-		//else
-		//{
-			hd_file_Ptr[index] = end_of_mem;
-		//}
-				
-		memset(PC_msg,0,40);                   //memset - clears the array
-		
-		*(hd_file_Ptr[index] + str_size) = '|';
-		*(hd_file_Ptr[index] + str_size + 1) = '\0';
+		last_addr = hd_file_Ptr[index] + str_size + 1;
 		
 		//receiving part:
 		DMA_DAR0 = (uint32_t)hd_file_Ptr[index];       				//destination
@@ -310,21 +301,20 @@ void print_file(int file_idx){
 		{
 			lcd_new_line();        	      //second line
 		}
-		if(temp_ptr == &files[11999] + 1)
-			temp_ptr = &files;
 		i--;
 		for (j=10000; j>0; j--);	     // Delay
 	}
 	
 }
 
-void send_file(int file_idx){
+void send_file(){
 	int j,i;
+	char str[24];
 	
-	lcd_clear();
-	//lcd_puts("sending...");
+	memset(str,0,24);                  //memset - clears the array
+	sprintf(str,"filename %s\n",file_name_Ptr[file_to_send_idx]);
 		
-	UARTprintf(UART0_BASE_PTR,hd_file_Ptr[file_idx]);
+	UARTprintf(UART0_BASE_PTR,str);
 	
 }
 
