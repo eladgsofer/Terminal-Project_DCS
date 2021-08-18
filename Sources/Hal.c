@@ -13,14 +13,9 @@ void PORTD_IRQHandler(void){
 	// check that the interrupt was for switch
 	if (PORTD_ISFR & SW7_POS) { //PTD7 - Choosing file
 		
-		//Debounce or using PFE field
-		while(TFC_PUSH_BUTTON_0_PRESSED)	// wait of release the button
-		for(i=20000 ; i>0 ; i--); //delay, button debounce
-		
 		if ((state == FILE_TRANS_1) & (files_num >= 1)) { 
 			
 			rfile_mode ^= 0x01;	//Toggle - first press shows file, second sends
-			
 			if (rfile_mode == 0)
 			{
 				print_file(curr_index);
@@ -31,32 +26,35 @@ void PORTD_IRQHandler(void){
 				send_file();	
 			}
 		}
+		//Debounce or using PFE field
+		while(TFC_PUSH_BUTTON_0_PRESSED)	// wait of release the button
+		for(i=50000 ; i>0 ; i--); //delay, button debounce
 		
 		PORTD_ISFR |= TFC_PUSH_BUTT0N0_LOC; // clear interrupt flag bit of PTD7
+		
 	}
 	
 	if (PORTD_ISFR & SW6_POS){  //PTD6 - Move between files in LCD
-		
-		//Debounce or using PFE field
-		while(!(GPIOD_PDIR & SW6_POS) );// wait of release the button
-		for(i=20000 ; i>0 ; i--); //delay, button debounce
 		
 		if ((state == FILE_TRANS_1) & (files_num >= 2)){
 			curr_index = next_index;
 			next_index = print_files_menu(curr_index);
 		}
 		
+		//Debounce or using PFE field
+		while(!(GPIOD_PDIR & SW6_POS) );// wait of release the button
+		for(i=30000 ; i>0 ; i--); //delay, button debounce
 		PORTD_ISFR |= TFC_PUSH_BUTT0N1_LOC; // clear interrupt flag bit of PTD6  // clear interrupt flag bit of PTD7
 		
 	}
 }
 
 
-//-----------------------------------------------------------------
-// PIT - ISR = Interrupt Service Routine
-//-----------------------------------------------------------------
-void PIT_IRQHandler(){
-}
+////-----------------------------------------------------------------
+//// PIT - ISR = Interrupt Service Routine
+////-----------------------------------------------------------------
+//void PIT_IRQHandler(){
+//}
 //-----------------------------------------------------------------
 // ADC0 - ISR = Interrupt Service Routine
 //-----------------------------------------------------------------

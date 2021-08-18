@@ -3,6 +3,8 @@
 
 #define MUDULO_REGISTER  0x2EE0
 
+char ready;
+
 // set I/O for switches and LEDs
 void InitGPIO()
 {
@@ -152,7 +154,7 @@ void dma_init(void)
 				 DMA_DCR_CS_MASK  |		// Cycle Steal
 				 DMA_DCR_SSIZE(1) |		// Set source size to 8 bits = 1 byte
 				 DMA_DCR_DINC_MASK|		// Set increments to destination address
-				 DMA_DCR_DMOD(8)  |     // Destination address modulo of 2K Bytes
+				 DMA_DCR_DMOD(15)  |     // Destination address modulo of 2K Bytes
 				 DMA_DCR_DSIZE(1));		// Set destination size of 8 bits = 1 byte 
 				 
 	
@@ -169,8 +171,8 @@ void dma_init(void)
 				 DMA_DCR_CS_MASK  |
 				 DMA_DCR_SSIZE(1) |		// Set source size to 8 bits = 1 byte
 				 DMA_DCR_SINC_MASK|		// Set increments to source address
-				 DMA_DCR_SMOD(8)  |     // Destination address modulo of 2K Bytes
-				 DMA_DCR_DSIZE(1) |		// Set destination size of 8 bits = 1 byte
+				 DMA_DCR_SMOD(15)  |     // Destination address modulo of 2K Bytes
+				 DMA_DCR_DSIZE(1)|		// Set destination size of 8 bits = 1 byte
 				 DMA_DCR_AA_MASK);		// Enable auto alignment 
 	
 	DMAMUX0_CHCFG1 |= DMAMUX_CHCFG_SOURCE(3);

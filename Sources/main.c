@@ -11,7 +11,9 @@ int print_files_menu(int file_index);
 void receive_file(int index);
 void send_file();
 
+
 int main(void){
+
 	char_idx = 0;
 	dataready = 0;
 	ClockSetup();
@@ -240,7 +242,7 @@ void receive_file(int index){
 		file_size[index] = str_size;
 		i++;
 		
-		if((last_addr + str_size + 30) > &(files[12999]))
+		if((last_addr + str_size + 30) > &files[9999])
 		{
 			last_addr = &files;
 			while( files_num > 0 && (last_addr + str_size + 30 > hd_file_Ptr[index_first]) && index_first != index_last)
@@ -274,8 +276,8 @@ void receive_file(int index){
 		last_addr = hd_file_Ptr[index] + str_size + 1;
 		
 		//receiving part:
-		DMA_DAR0 = (uint32_t)hd_file_Ptr[index];       				//destination
-		DMA_DSR_BCR0 = DMA_DSR_BCR_BCR(file_size[index]);       // number of bytes yet to be transferred
+		DMA_DAR0 = (uint32_t)hd_file_Ptr[index];       			//destination
+		DMA_DSR_BCR0 = DMA_DSR_BCR_BCR(file_size[index]);       // number of bytes to transfer
 		DMAMUX0_CHCFG0 |= DMAMUX_CHCFG_ENBL_MASK; 				// Enable DMA channel 
 		disable_irq(INT_UART0-16);               			    // Disable UART0 interrupt
 		UART0_C5 |= UART0_C5_RDMAE_MASK;          				// Enable DMA request for UART0 receiver
@@ -312,7 +314,7 @@ void send_file(){
 	char str[24];
 	
 	memset(str,0,24);                  //memset - clears the array
-	sprintf(str,"filename %s\n",file_name_Ptr[file_to_send_idx]);
+	sprintf(str,"filename %s\n", file_name_Ptr[file_to_send_idx]);
 		
 	UARTprintf(UART0_BASE_PTR,str);
 	

@@ -27,6 +27,9 @@ enum State state;
 char* hd_file_Ptr[20];		//Array of Pointers to head of files
 char* file_name_Ptr[20];	//Array of Pointers to file names
 char* last_addr;
+char* mem_start_addr, *mem_end_addr;
+char garbage[3912];
+char files[10000];
 int file_size[20];			//Array of integers - file's size
 int files_num;				//current number of files
 int index_last;				//Index of last file added to array
@@ -36,7 +39,6 @@ int curr_index;				//Save index into a global variable to be handled in int_hand
 int file_to_send_idx;
 char PC_msg[40]; 			//Received message from pc
 //char files_names[300];		//Data base contains names of files
-char files[13000];			//files content
 int dataready;  		//flag which indicates if data received from UART is ready to be used 
 int char_idx;
 unsigned int rfile_mode;
